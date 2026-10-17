@@ -975,12 +975,28 @@ class Engine:
     def _click_background(self, candidate: Candidate) -> Optional[str]:
         if not candidate.window_hwnd:
             return None
+        # Chromium/Electron ရဲ့ web content က top-level window မဟုတ်ဘဲ
+        # Chrome_RenderWidgetHostHWND ဆိုတဲ့ child HWND ထဲမှာ ရှိတယ်။
+        # ဒါကြောင့် point ပါတဲ့ child HWND ကို ရှာပြီး အဲဒီကို PostMessage လုပ်တယ်
+        # (top-level window ကို လုပ်ရင် Chromium က route မလုပ်တတ်ဘူး)။
+        target_hwnd = candidate.window_hwnd
+        for child in child_windows(candidate.window_hwnd):
+            try:
+                left, top, right, bottom = _window_rect(child)
+            except Exception:
+                continue
+            cx, cy = candidate.center
+            if left <= cx < right and top <= cy < bottom:
+                target_hwnd = child
+                break
         point = wt.POINT(candidate.center[0], candidate.center[1])
-        if not user32.ScreenToClient(wt.HWND(candidate.window_hwnd), ctypes.byref(point)):
+        if not user32.ScreenToClient(wt.HWND(target_hwnd), ctypes.byref(point)):
             return None
         lparam = ((point.y & 0xFFFF) << 16) | (point.x & 0xFFFF)
-        user32.PostMessageW(wt.HWND(candidate.window_hwnd), WM_LBUTTONDOWN, MK_LBUTTON, lparam)
-        user32.PostMessageW(wt.HWND(candidate.window_hwnd), WM_LBUTTONUP, 0, lparam)
+        user32.PostMessageW(wt.HWND(target_hwnd), WM_LBUTTONDOWN, MK_LBUTTON, lparam)
+        time.sleep(0.03)
+        user32.PostMessageW(wt.HWND(target_hwnd), WM_LBUTTONUP, 0, lparam)
+        time.sleep(0.03)
         return "background.PostMessage"
 
     def _click_foreground(self, candidate: Candidate) -> Optional[str]:
@@ -1035,7 +1051,7 @@ class Engine:
         elif mode == "foreground":
             methods = [self._click_foreground]
         else:  # auto
-            methods = [self._click_with_uia, self._click_background, self._click_foreground]
+            methods = [self._click_background, self._click_with_uia, self._click_foreground]
 
         last_error = ""
         for method in methods:
@@ -1046,6 +1062,25 @@ class Engine:
                 self.log.debug("%s မအောင်မြင်ပါ: %s", method.__name__, exc)
                 continue
             if used:
+                # auto mode မှာ UIA/Background က "success" ပြန်ပေမယ့် တကယ်တော့
+                # Chromium က focus မရှိလို့ မနှိပ်ဖြစ်တာ ဖြစ်နိုင်တယ်။ ဒါကြောင့်
+                # နှိပ်ပြီး ခဏစောင့်ပြီး button ပျောက်သွားလား စစ်တယ် — မပျောက်ရင်
+                # နောက်နည်းလမ်း (foreground စသည်) ကို ဆက်စမ်းတယ်။
+                if (mode == "auto" and method is not self._click_foreground):
+                    time.sleep(0.35)
+                    try:
+                        new_candidates, _ = self.scan()
+                    except Exception:
+                        new_candidates = []
+                    still_there = any(
+                        (c.window_hwnd == candidate.window_hwnd
+                         and normalize_label(c.name) == normalize_label(candidate.name))
+                        for c in new_candidates
+                    )
+                    if still_there:
+                        self.log.debug("%s က success ပြန်ပေမယ့် button မပျောက်သေး — "
+                                       "နောက်နည်းလမ်း ဆက်စမ်းမယ်", used)
+                        continue
                 return ClickResult(candidate, True, used)
         return ClickResult(candidate, False, "none", last_error or "နည်းလမ်း မရှိပါ")
 
