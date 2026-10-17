@@ -9,6 +9,18 @@
 
 ---
 
+## 🚀 အမြန်စတင်နည်း (Quick Start — ၅ မိနစ်အတွင်း)
+
+> **ပထမဆုံး လုပ်ရမယ့် အရာ ၃ ခု:**
+
+1. **`install_requirements.cmd`** ကို double-click လုပ်ပါ (library တွေ တပ်ဆင်မည်)
+2. Antigravity Shortcut → Right-click → Properties → Target နောက်မှာ ` --force-renderer-accessibility` ထည့်ပါ
+3. **`AgyAutoAllow.pyw`** ကို double-click လုပ်ပါ → ညာဘက် taskbar tray မှာ **အစိမ်းရောင် ✓** icon ပေါ်လာပါမည်
+
+> 💡 Tray icon မပေါ်ရင် **`^` (up arrow)** ကို နှိပ်ပြီး hidden area ထဲ ကြည့်ပါ သို့မဟုတ် `run.cmd` → `[4] Diagnose` နှိပ်ပြီး စစ်ဆေးပါ။
+
+---
+
 ## ⚡ ထူးခြားချက်များ (Key Features)
 
 * **မောက်စ် Focus မခိုးပါ** — Windows UI Automation (UIA) ရဲ့ `Invoke` pattern ဖြင့် နောက်ကွယ်မှ တိုက်ရိုက် နှိပ်ပေးသောကြောင့် သင် စာရိုက်နေစဉ် Cursor ပြေးသွားခြင်း၊ Focus ပျောက်သွားခြင်း လုံးဝ မဖြစ်ပါ။
@@ -184,6 +196,17 @@ Folder ထဲရှိ **`run.cmd`** ကို Double-Click နှိပ်ပ�
 **ဖြေရှင်းရန်:**
 * Chromium Engine သည် Minimize ပြုလုပ်ထားသော Window များ၏ UI Render ကို ရပ်ဆိုင်း (Throttle) ထားတတ်သောကြောင့် Default အနေဖြင့် မနှိပ်ပါ။
 * Antigravity ကို အခြား App များ (ဥပမာ Browser) ၏ အောက်တွင် ကွယ်နေပါစေ၊ Taskbar ပေါ်တွင် ဖွင့်ထားပေးပါ (Focus ပေးထားရန် မလိုပါ)။
+
+### မေး။ ။ `AgyAutoAllow.pyw` ကို double-click လုပ်ပေမယ့် Tray icon မပေါ်ပါ
+
+**ဖြေရှင်းရန်:**
+1. **Hidden area စစ်ပါ** — Taskbar ညာဘက် **`^` (up arrow)** နှိပ်ပြီး popup ထဲမှာ **အစိမ်းရောင် ✓** icon ရှာပါ။ တွေ့ရင် icon ကို drag ဆွဲပြီး taskbar ပေါ် ထားပါ (pin)။
+2. **Windows Settings** → Personalization → Taskbar → "Other system tray icons" → AgyAutoAllow **On** လုပ်ပါ။
+3. **Error log စစ်ပါ** — `logs\startup_error.log` ဖိုင် ရှိရင် Notepad နဲ့ ဖွင့်ပြီး error ကို ကြည့်ပါ။
+4. **Console mode နဲ့ စမ်းပါ** — `run.cmd` → `[2]` သို့မဟုတ် `python agy_auto_allow.py --console` run ပြီး error ရှိမရှိ စစ်ပါ။
+5. **Backup launcher** — `Start.bat` ကို double-click လုပ်ပါ (pythonw ကို တိုက်ရိုက် ခေါ်သုံးပါတယ်)။
+
+---
 
 ### မေး။ ။ 'python' is not recognized as an internal or external command ဟု ပေါ်နေပါက
 **ဖြေရှင်းရန်:**
