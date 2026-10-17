@@ -202,6 +202,7 @@ class TrayApp:
             self.engine.enabled = bool(cfg.get("enabled", True))
             self.engine.rebuild_condition()
             self.engine._templates = None
+            self.engine._apply_keep_awake()
             self.log.info("config ပြန်တင်ပြီး: %s", self.config_file)
             self.notify("Config ပြန်တင်ပြီး", force=True)
         except Exception as exc:
@@ -227,6 +228,7 @@ class TrayApp:
 
     def on_quit(self, icon=None, item=None):
         self.log.info("ထွက်နေသည်...")
+        core.set_keep_awake(False)
         self.engine.request_stop()
         if self.hotkeys:
             self.hotkeys.stop()
@@ -374,6 +376,7 @@ def run_console(engine: "core.Engine", logger) -> None:
     except KeyboardInterrupt:
         print("\nရပ်နေသည်...")
     finally:
+        core.set_keep_awake(False)
         engine.request_stop()
         thread.join(timeout=3)
 
@@ -382,40 +385,58 @@ def run_console(engine: "core.Engine", logger) -> None:
 # main
 # --------------------------------------------------------------------------
 def relaunch_antigravity(flags=None, logger=None, wait_seconds: float = 5.0,
-                         quiet: bool = False) -> int:
+                        quiet: bool = False) -> int:
     """Antigravity ကို --force-renderer-accessibility flag နဲ့ ပြန်ဖွင့်တယ်။
 
     Chromium/Electron က accessibility tree ကို လိုအပ်မှ ဆောက်တာမို့ တချို့စက်တွေမှာ
     ဒီ flag မပါဘဲ Allow/Submit button တွေ UI Automation မှာ မပေါ်တတ်ဘူး။
     wait_seconds=0 ဆိုရင် အရင် စောင့်တဲ့ countdown ကို ကျော်တယ် (auto mode အတွက်)။
     """
-    exe = None
-    candidates = [
-        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Antigravity", "Antigravity.exe"),
-        os.path.join(os.environ.get("PROGRAMFILES", ""), "Antigravity", "Antigravity.exe"),
-    ]
-    for candidate in candidates:
-        if candidate and os.path.isfile(candidate):
-            exe = candidate
-            break
-
     def say(message: str) -> None:
         if not quiet:
             print(message)
         if logger:
             logger.info("[relaunch] %s", message)
 
+    # --- exe path ရှာ ---
+    exe = None
+    searched = []
+    candidates = []
+    la = os.environ.get("LOCALAPPDATA", "")
+    pf = os.environ.get("PROGRAMFILES", "")
+    pf86 = os.environ.get("PROGRAMFILES(X86)", "")
+    for base in (la, pf, pf86):
+        if base:
+            candidates.append(os.path.join(base, "Programs", "Antigravity", "Antigravity.exe"))
+            candidates.append(os.path.join(base, "Antigravity", "Antigravity.exe"))
+    seen_paths = set()
+    uniq = []
+    for c in candidates:
+        if c not in seen_paths:
+            seen_paths.add(c)
+            uniq.append(c)
+    candidates = uniq
+    for candidate in candidates:
+        searched.append(candidate)
+        if candidate and os.path.isfile(candidate):
+            exe = candidate
+            break
+
     if not exe:
-        say("Antigravity.exe ကို မတွေ့ပါ။ ဒီလမ်းကြောင်းတွေမှာ ရှာကြည့်ပါ:")
-        for candidate in candidates:
+        say("Antigravity.exe ကို မတွေ့ပါ။ ဒီလမ်းကြောင်းတွေမှာ ရှာကြည့်ပြီးပြီ:")
+        for candidate in searched:
             say("    " + candidate)
+        say("")
+        say("ကိုယ်တိုင် ဖွင့်ချင်ရင်:")
+        say(r'    "%LOCALAPPDATA%\Programs\Antigravity\Antigravity.exe" --force-renderer-accessibility')
         return 1
 
     flags = flags or ["--force-renderer-accessibility"]
-    say("Antigravity: %s" % exe)
+    say("Antigravity တွေ့တယ်: %s" % exe)
     say("ပိတ်ပြီး ဒီ flag နဲ့ ပြန်ဖွင့်မယ်: %s" % " ".join(flags))
+
     if wait_seconds and wait_seconds > 0:
-        say("⚠️  သိမ်းမထားတဲ့ စာရှိရင် အခုပဲ သိမ်းပါ။ %d စက္ကန့်အတွင်း Ctrl+C = ပယ်ဖျက်"
+        say("သိမ်းမထားတဲ့ စာရှိရင် အခုပဲ သိမ်းပါ။ %d စက္ကန့်အတွင်း Ctrl+C = ပယ်ဖျက်"
             % int(wait_seconds))
         try:
             for remaining in range(int(wait_seconds), 0, -1):
@@ -425,19 +446,56 @@ def relaunch_antigravity(flags=None, logger=None, wait_seconds: float = 5.0,
         except KeyboardInterrupt:
             say("ပယ်ဖျက်လိုက်တယ်။")
             return 1
+        if not quiet:
+            print()
+
+    say("Antigravity process တွေကို ပိတ်နေတယ်...")
     try:
         result = subprocess.run(["taskkill", "/IM", "Antigravity.exe", "/F"],
                                 capture_output=True, text=True)
         if logger:
             logger.info("taskkill rc=%s %s", result.returncode, (result.stdout or "").strip()[:200])
-        time.sleep(2.0)
-        subprocess.Popen([exe] + list(flags))
-        say("ပြန်ဖွင့်ပြီးပါပြီ (accessibility ဖွင့်ထားတယ်)။")
-        say("Antigravity ပေါ်လာတဲ့အခါ:  python agy_auto_allow.py --discover --hidden-elements")
-        return 0
+    except Exception as exc:
+        say("taskkill မအောင်မြင်ပါ: %s" % exc)
+
+    say("ပြန်ဖွင့်ဖို့ ၃ စက္ကန့် စောင့်နေတယ်...")
+    time.sleep(3.0)
+
+    try:
+        proc = subprocess.Popen(
+            [exe] + list(flags),
+            cwd=os.path.dirname(exe),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        say("launch လုပ်ပြီး (pid=%s) — ပေါ်လာဖို့ စောင့်နေတယ်..." % proc.pid)
     except Exception as exc:
         say("ပြန်ဖွင့်လို့မရပါ: %s" % exc)
+        say("ကိုယ်တိုင် ဖွင့်ပါ: %s %s" % (exe, " ".join(flags)))
         return 1
+
+    deadline = time.time() + 15.0
+    appeared = False
+    while time.time() < deadline:
+        time.sleep(1.0)
+        try:
+            check = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq Antigravity.exe", "/FO", "CSV", "/NH"],
+                capture_output=True, text=True,
+            )
+            if "Antigravity.exe" in (check.stdout or ""):
+                appeared = True
+                break
+        except Exception:
+            break
+    if appeared:
+        say("Antigravity ပြန်ပွင့်ပြီ (accessibility ဖွင့်ထားတယ်)။")
+        say("Antigravity ပေါ်လာတဲ့အခါ:  python agy_auto_allow.py --diagnose")
+        return 0
+    say("၁၅ စက္ကန့်အတွင်း Antigravity မပေါ်သေးဘူး။")
+    say("ကိုယ်တိုင် စစ်ကြည့်ပါ — မပွင့်ရင် ဒီ command နဲ့ ဖွင့်ပါ:")
+    say('    "%s" %s' % (exe, " ".join(flags)))
+    return 1
 
 
 def handle_a11y_empty(cfg: Dict[str, Any], logger, payload: Dict[str, Any],

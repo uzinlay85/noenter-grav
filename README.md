@@ -200,6 +200,7 @@ Folder ထဲရှိ **`run.cmd`** ကို Double-Click နှိပ်ပ�
 {
   "enabled": true,                  // စတင်ချိန်တွင် Auto-Allow ဖွင့်ထားမည်
   "dry_run": false,                 // true ထားပါက တကယ်မနှိပ်ဘဲ log ပဲ ထုတ်မည်
+  "prevent_screen_sleep": true,     // ON ဖြစ်နေစဉ် မျက်နှာပြင် sleep မဖြစ်အောင် ထားမည်
   "poll_interval_seconds": 0.5,     // စစ်ဆေးမည့် အကြိမ်နှုန်း (စက္ကန့်)
   "labels": [ ... ],                // ခွင့်ပြုမည့် ခလုတ် စာရင်း
   "block_labels": [ ... ],          // တားမြစ်မည့် ခလုတ် စာရင်း

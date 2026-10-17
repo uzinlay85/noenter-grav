@@ -5,24 +5,25 @@ echo ======================================================
 echo   AgyAutoAllow - Antigravity Auto Allow / Submit
 echo ======================================================
 echo.
-echo [1] Tray App စတင်မည် (Background / Console မပါ - ပုံမှန်အသုံးပြုနည်း)
-echo [2] Console Mode (Live Log များကို Terminal တွင် ကြည့်မည်)
-echo [3] Dry-Run Mode (စမ်းသပ်ရန် - တကယ် မနှိပ်ဘဲ log ပဲ ထုတ်မည်)
-echo [4] Diagnose (Antigravity window နှင့် ခလုတ်များ ရှာတွေ့လား စစ်ဆေးမည်)
-echo [5] List Windows (ဖွင့်ထားသော Antigravity window များကို စာရင်းထုတ်မည်)
-echo [6] Discover Buttons (တွေ့သမျှ UI element နှင့် ခလုတ်များကို Dump လုပ်မည်)
-echo [7] Screenshot ရိုက်မည် (Image Fallback Template အတွက်)
-echo [8] Install Requirements (လိုအပ်သော Library များကို Install လုပ်မည်)
-echo [9] Windows Startup တွင် ထည့်မည် (ကွန်ပျူတာဖွင့်တိုင်း အလိုအလျောက် run)
-echo [0] ထွက်မည် (Exit)
+echo [1] Start Tray App (normal usage, no console)
+echo [2] Console Mode (view live logs in terminal)
+echo [3] Dry-Run Mode (test, no real clicks)
+echo [4] Diagnose (check if Antigravity window/buttons found)
+echo [5] List Windows
+echo [6] Discover Buttons (dump UI elements)
+echo [7] Screenshot (for image fallback templates)
+echo [8] Install Requirements (pip install)
+echo [9] Add to Windows Startup (auto-run on boot)
+echo [A] Relaunch Antigravity (with accessibility flag)
+echo [0] Exit
 echo.
-set /p choice="နံပါတ်တစ်ခု ရွေးပါ [1]: "
+set /p choice="Choose [1]: "
 if "%choice%"=="" set choice=1
 
-if "%choice%"=="1" (
-    echo AgyAutoAllow ကို စတင်နေပါသည်...
+if /I "%choice%"=="1" (
+    echo Starting AgyAutoAllow...
     start "" pythonw "%~dp0AgyAutoAllow.pyw"
-    echo ညာဘက် Taskbar System Tray ထဲတွင် အစိမ်းရောင် icon ပေါ်လာပါမည်။
+    echo Green icon will appear in the system tray (bottom-right).
     timeout /t 3 >nul
     exit /b 0
 )
@@ -40,6 +41,7 @@ if "%choice%"=="9" (
     call "%~dp0install_startup.cmd"
     exit /b 0
 )
+if /I "%choice%"=="A" python "%~dp0agy_auto_allow.py" --relaunch-agy
 if "%choice%"=="0" exit /b 0
 
 echo.

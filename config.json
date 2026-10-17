@@ -1,6 +1,7 @@
 {
   "enabled": true,
   "dry_run": false,
+  "prevent_screen_sleep": true,
   "process_names": [
     "Antigravity.exe"
   ],

@@ -285,6 +285,26 @@ def nudge_renderer_accessibility(hwnd: int) -> Dict[str, bool]:
 
 
 # --------------------------------------------------------------------------
+# Screen sleep prevention (keep display awake while Auto-Allow is ON)
+# --------------------------------------------------------------------------
+_ES_CONTINUOUS = 0x80000000
+_ES_SYSTEM_REQUIRED = 0x00000001
+_ES_DISPLAY_REQUIRED = 0x00000002
+
+
+def set_keep_awake(enabled: bool) -> None:
+    """Auto-Allow が ON の間、画面が sleep しないようにする (Windows)。"""
+    try:
+        if enabled:
+            ctypes.windll.kernel32.SetThreadExecutionState(
+                _ES_CONTINUOUS | _ES_SYSTEM_REQUIRED | _ES_DISPLAY_REQUIRED)
+        else:
+            ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
+    except Exception:
+        pass
+
+
+# --------------------------------------------------------------------------
 # Label matching
 # --------------------------------------------------------------------------
 DEFAULT_LABELS: List[str] = [
@@ -358,6 +378,7 @@ def is_blocked(name: str, block_labels: Sequence[str]) -> Optional[str]:
 DEFAULT_CONFIG: Dict[str, Any] = {
     "enabled": True,
     "dry_run": False,
+    "prevent_screen_sleep": True,   # ON の間、画面が sleep しないようにする
 
     "process_names": ["Antigravity.exe"],
     "window_title_regex": "",
@@ -557,6 +578,7 @@ class Engine:
 
         self.enabled: bool = bool(cfg.get("enabled", True))
         self.dry_run: bool = bool(cfg.get("dry_run", False))
+        self._apply_keep_awake()
 
         self._attempts: Dict[Tuple[Any, ...], Tuple[int, float]] = {}
         self._clicked_at: Dict[Tuple[Any, ...], float] = {}
@@ -629,14 +651,22 @@ class Engine:
     def set_enabled(self, value: bool) -> None:
         with self._lock:
             self.enabled = bool(value)
+        self._apply_keep_awake()
         self._emit("toggle", {"enabled": self.enabled})
 
     def toggle(self) -> bool:
         with self._lock:
             self.enabled = not self.enabled
             value = self.enabled
+        self._apply_keep_awake()
         self._emit("toggle", {"enabled": value})
         return value
+
+    def _apply_keep_awake(self) -> None:
+        if self.cfg.get("prevent_screen_sleep", False):
+            set_keep_awake(bool(self.enabled))
+        else:
+            set_keep_awake(False)
 
     def request_stop(self) -> None:
         self._stop.set()
